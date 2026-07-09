@@ -1,20 +1,3 @@
-# =============================================================================
-# strategy/indicators.py — FX Convergence System
-#
-# What this file does (plain English):
-#   Three building blocks that every other module depends on:
-#
-#   1. ATR  — measures how much price moves on average each day
-#              Used to set SL/TP distances that adapt to market volatility
-#
-#   2. MACD — measures the gap between a fast and slow moving average
-#              When that gap diverges from price direction = our signal
-#
-#   3. Swing High / Swing Low detection
-#              Finds natural turning points in price history
-#              These become our Support/Resistance levels
-# =============================================================================
-
 import numpy as np
 import pandas as pd
 

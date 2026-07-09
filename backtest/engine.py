@@ -1,26 +1,3 @@
-# =============================================================================
-# backtest/engine.py — FX Convergence System
-#
-# What this file does (plain English):
-#   Simulates trading the strategy on historical data, one bar at a time.
-#
-#   For each bar:
-#     1. If we have an open trade — check if today's bar hit SL or TP
-#     2. If no open trade — check if a signal fired on previous bar
-#        If yes — "fill" at today's open (market order simulation)
-#        Calculate SL and TP from fill price and ATR
-#     3. Track all trades and the equity curve (account balance over time)
-#
-#   Why bar-by-bar (not vectorised)?
-#       Vectorised backtests can have lookahead bias — they "see" future bars
-#       when computing signals and positions. Bar-by-bar is the only way to
-#       correctly simulate "I only know what I know at the close of this bar."
-#
-#   Fill price convention:
-#       Signal fires on bar N close → fill at bar N+1 open.
-#       This is the most realistic simulation for a daily-bar market order.
-# =============================================================================
-
 import logging
 
 import numpy as np
@@ -57,10 +34,13 @@ def run_backtest(
     tp_mult  = p["TP_MULT"]
 
     trades: list[dict] = []
+    short_cooldown: int = 0
     equity: list[float] = []
     position: dict | None = None    # holds the current open trade
 
     for i in range(1, len(df)):
+        if short_cooldown > 0:
+            short_cooldown -= 1
         bar      = df.iloc[i]
         prev_bar = df.iloc[i - 1]
         date     = df.index[i]
@@ -71,6 +51,7 @@ def run_backtest(
             if result is not None:
                 pnl     = _calculate_pnl(position, result["exit_price"], capital)
                 capital += pnl["dollar_pnl"]
+                position_direction = position["direction"]
                 trades.append({
                     **position,
                     "exit_date"  : date,
@@ -81,9 +62,11 @@ def run_backtest(
                     "capital_after": capital,
                 })
                 position = None
+                if result["reason"] == "SL" and position_direction == -1:
+                    short_cooldown = config.SHORT_COOLDOWN_BARS
 
         # ── Step 2: Check if previous bar had a signal → enter today ──────
-        if position is None and prev_bar["signal"] != 0:
+        if position is None and prev_bar["signal"] != 0 and not (int(prev_bar["signal"]) == -1 and short_cooldown > 0):
             direction = int(prev_bar["signal"])   # +1 LONG, -1 SHORT
             fill_price = bar["Open"]              # fill at today's open
             atr        = prev_bar["atr"]
@@ -128,7 +111,8 @@ def run_backtest(
             "pnl_pips"     : pnl["pip_pnl"],
             "capital_after": capital,
         })
-        equity.append(capital)
+        if equity:
+            equity[-1] = capital
 
     trades_df    = pd.DataFrame(trades)
     equity_curve = pd.Series(equity, index=df.index[1:len(equity) + 1], name="equity")

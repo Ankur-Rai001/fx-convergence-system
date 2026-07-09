@@ -1,20 +1,3 @@
-# =============================================================================
-# backtest/metrics.py — FX Convergence System
-#
-# What this file does (plain English):
-#   Takes the completed trades list and equity curve from the backtest engine
-#   and computes all performance statistics we care about.
-#
-#   Key metrics:
-#     Profit Factor  — are total wins bigger than total losses?
-#     Sortino Ratio  — are returns good relative to downside risk?
-#     Max Drawdown   — what was the worst losing streak?
-#     CAGR           — what annual % return did we compound?
-#     Expectancy     — on average, how much do we make per trade?
-#     TP/SL Ratio    — integrity check (must be ~2.0)
-#     Win Rate       — what % of trades were winners?
-# =============================================================================
-
 import logging
 
 import numpy as np
@@ -200,8 +183,9 @@ def _sortino(equity_curve: pd.Series, risk_free_rate: float = 0.0) -> float:
     We compute daily returns from the equity curve, then annualise.
     Trading days per year = 252.
     """
+    
     daily_returns = equity_curve.pct_change().dropna()
-    if len(daily_returns) < 2:
+    if len(daily_returns) < 20:
         return 0.0
 
     ann_return   = daily_returns.mean() * 252
@@ -214,7 +198,8 @@ def _sortino(equity_curve: pd.Series, risk_free_rate: float = 0.0) -> float:
     if downside_std == 0:
         return 0.0
 
-    return round((ann_return - risk_free_rate) / downside_std, 3)
+    sortino = (ann_return - risk_free_rate) / downside_std
+    return round(min(sortino, 999.0), 3)  
 
 
 def _tp_sl_ratio(trades_df: pd.DataFrame) -> float:

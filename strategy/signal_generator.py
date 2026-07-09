@@ -1,23 +1,3 @@
-# =============================================================================
-# strategy/signal_generator.py — FX Convergence System
-#
-# What this file does (plain English):
-#   For every bar in the data, check two independent signals:
-#
-#   Signal 1 — SR Zone:
-#       Is current price within 0.5×ATR of any historical swing high or low?
-#       If yes → price is at a "memory level" where the market previously reacted.
-#
-#   Signal 2 — MACD Divergence:
-#       Are price and MACD moving in opposite directions at recent swing points?
-#       If yes → momentum is secretly reversing while price looks normal.
-#
-#   Convergence Rule:
-#       BOTH signals must fire simultaneously → generate trade signal.
-#       Signal 1 alone = no trade. Signal 2 alone = no trade.
-#       Only when both agree = LONG or SHORT entry.
-# =============================================================================
-
 import numpy as np
 import pandas as pd
 
@@ -93,6 +73,10 @@ def generate_signals(df: pd.DataFrame, params: dict | None = None) -> pd.DataFra
     df.loc[df["sr_long"]  & df["macd_long"],  "signal"] = 1   # LONG
     df.loc[df["sr_short"] & df["macd_short"], "signal"] = -1  # SHORT
 
+        # MA200 hard filter — no LONG below MA200, no SHORT above MA200
+    df["ma200"] = df["Close"].rolling(200).mean()
+    df.loc[(df["signal"] ==  1) & (df["Close"] < df["ma200"]), "signal"] = 0
+    df.loc[(df["signal"] == -1) & (df["Close"] > df["ma200"]), "signal"] = 0
     return df
 
 

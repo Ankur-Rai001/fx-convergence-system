@@ -1,33 +1,17 @@
-# =============================================================================
-# main.py — FX Convergence System
-#
-# CLI entry point. Three modes:
-#
-#   python main.py --mode backtest [--pair EURUSD=X] [--refresh]
-#       Run backtest on one pair (or all pairs if not specified)
-#       Prints metrics, saves charts
-#
-#   python main.py --mode wfo [--refresh]
-#       Run full 6-fold Walk-Forward Optimization across all pairs
-#       Prints fold-by-fold results and final verdict
-#
-#   python main.py --mode live
-#       Check live signals on all pairs right now
-#       Prints which pairs have active signals and entry details
-# =============================================================================
-
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import argparse
 import logging
 import sys
 from pathlib import Path
-
+from datetime import datetime
 import config
 from data.fetcher import load_all_pairs
 from strategy.signal_generator import generate_signals
 from backtest.engine import run_backtest
 from backtest.metrics import compute_metrics, check_gate, print_metrics
 from walk_forward.wfo import run_wfo
-from reports.charts import plot_equity_curve, plot_trade_distribution, plot_wfo_summary
+# from reports.charts import plot_equity_curve, plot_trade_distribution, plot_wfo_summary
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -88,14 +72,11 @@ def main() -> None:
 
 
 # ── Backtest mode ─────────────────────────────────────────────────────────────
-
 def _run_backtest(data: dict) -> None:
-    """
-    Run backtest with default config parameters (no optimisation).
-    Use this to inspect the strategy's raw behaviour before WFO.
-    """
-    all_trades  = []
-    all_equity  = []
+    import pandas as pd
+    all_trades        = []
+    all_equity_curves = []
+    timestamp         = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     for pair, df in data.items():
         logger.info(f"--- Backtesting {pair} ---")
@@ -112,21 +93,46 @@ def _run_backtest(data: dict) -> None:
             if not gate_passed:
                 logger.warning(f"{pair}: Gate failures: {failures}")
 
-            plot_equity_curve(equity_curve, pair=pair)
-            plot_trade_distribution(trades_df, pair=pair)
-
             all_trades.append(trades_df)
+            all_equity_curves.append(equity_curve)
 
-    if len(all_trades) > 1:
-        import pandas as pd
+    out = Path(config.REPORTS_DIR)
+
+    if all_trades:
         combined = pd.concat(all_trades, ignore_index=True)
-        start_cap = config.STARTING_CAPITAL
-        equity_proxy = pd.Series(
-            start_cap + combined["pnl_usd"].cumsum().values,
-            index=combined["entry_date"].values,
-        )
+
+        # ── File 1: Trade log ──────────────────────────────────────
+        trade_log_path = out / f"trade_log_{timestamp}.csv"
+        combined.to_csv(trade_log_path, index=False)
+        logger.info(f"Trade log saved: {trade_log_path}")
+
+        # ── File 2: Metrics summary ────────────────────────────────
+        # Build proper daily combined equity curve (fixes Sortino bug)
+        # Sum daily P&L changes across all pairs on each calendar day.
+        start_cap       = config.STARTING_CAPITAL
+        daily_pnl_parts = [eq.diff().fillna(0) for eq in all_equity_curves]
+        combined_daily  = pd.concat(daily_pnl_parts, axis=1).fillna(0).sum(axis=1)
+        equity_proxy    = start_cap + combined_daily.cumsum()
+
         portfolio_metrics = compute_metrics(combined, equity_proxy, start_cap)
         print_metrics(portfolio_metrics, label="PORTFOLIO — All Pairs Combined")
+
+        summary_path = out / f"summary_{timestamp}.txt"
+        with open(summary_path, "w") as f:
+            f.write(f"FX Convergence System — Run Summary\n")
+            f.write(f"Timestamp : {timestamp}\n")
+            f.write(f"Pairs     : {list(data.keys())}\n")
+            f.write(f"Period    : {config.START_DATE} to {config.END_DATE}\n")
+            f.write("=" * 52 + "\n")
+            for k, v in portfolio_metrics.items():
+                f.write(f"  {k:<22}: {v}\n")
+            f.write("=" * 52 + "\n")
+            gate_passed, failures = check_gate(portfolio_metrics)
+            f.write(f"  Gate Result: {'PASS' if gate_passed else 'FAIL'}\n")
+            if failures:
+                for fail in failures:
+                    f.write(f"    - {fail}\n")
+        logger.info(f"Summary saved: {summary_path}")
 
 
 # ── WFO mode ──────────────────────────────────────────────────────────────────

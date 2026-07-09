@@ -1,29 +1,3 @@
-# =============================================================================
-# walk_forward/wfo.py — FX Convergence System
-#
-# What this file does (plain English):
-#   Walk-Forward Optimization (WFO) — the honest way to test a strategy.
-#
-#   The problem with normal backtesting:
-#       If you optimise parameters on ALL historical data, the strategy learns
-#       the specific quirks of that dataset. It looks great in backtest but
-#       fails in live trading. This is called curve-fitting or overfitting.
-#       Think of it as memorising exam answers vs actually learning.
-#
-#   How WFO solves it:
-#       We divide data into 6 folds. Each fold has:
-#         - In-Sample (IS):  data the optimiser SEES     → find best params
-#         - Out-of-Sample (OOS): data the optimiser NEVER sees → honest test
-#       Best IS params → frozen → tested on OOS.
-#       If strategy works across all 6 OOS windows → genuine edge, not luck.
-#
-#   Fold structure (anchored expanding — IS window grows each fold):
-#       Fold 1: IS = Jan2015-Dec2016 | OOS = Jan-Jun 2017
-#       Fold 2: IS = Jan2015-Jun2017 | OOS = Jul-Dec 2017
-#       ...     (IS grows forward, OOS always fresh 6 months)
-#       Fold 6: IS = Jan2015-Jun2019 | OOS = Jul-Dec 2019
-# =============================================================================
-
 import itertools
 import logging
 from dateutil.relativedelta import relativedelta

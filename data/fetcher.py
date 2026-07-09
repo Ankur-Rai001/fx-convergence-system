@@ -1,13 +1,3 @@
-# =============================================================================
-# data/fetcher.py — FX Convergence System
-#
-# What this file does (plain English):
-#   1. Downloads daily OHLCV data from Yahoo Finance for each FX pair
-#   2. Applies sanity checks (bad OHLC, missing bars, large price jumps)
-#   3. Saves to a local CSV cache so we don't re-download every run
-#   4. Returns a clean pandas DataFrame per pair
-# =============================================================================
-
 import logging
 from pathlib import Path
 

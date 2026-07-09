@@ -1,10 +1,4 @@
-# =============================================================================
-# config.py — FX Convergence System
-# ALL parameters live here. No hardcoded values anywhere else in the codebase.
-# =============================================================================
-
-# ── Universe ──────────────────────────────────────────────────────────────────
-PAIRS      = ["EURUSD=X", "GBPUSD=X", "AUDUSD=X"]
+PAIRS      = ["EURUSD=X","AUDUSD=X","NZDUSD=X"]
 START_DATE = "2015-01-01"
 END_DATE   = "2024-12-31"
 INTERVAL   = "1d"                      # daily bars
@@ -15,19 +9,21 @@ ATR_PERIOD   = 14                      # ATR lookback (bars)
 MACD_FAST    = 12                      # MACD fast EMA period
 MACD_SLOW    = 26                      # MACD slow EMA period
 MACD_SIGNAL  = 9                       # MACD signal line EMA period
-MACD_LOOKBACK = 30                     # bars to scan for divergence
+MACD_LOOKBACK = 40                     # bars to scan for divergence
 
 SR_LOOKBACK  = 200                     # bars to scan for swing levels
-SR_TOLERANCE = 0.5                     # SR zone = within TOLERANCE x ATR of swing level
+SR_TOLERANCE = 0.65                   # SR zone = within TOLERANCE x ATR of swing level
 SWING_WINDOW = 5                       # bars each side for swing high/low detection
 
 # ── Exit ──────────────────────────────────────────────────────────────────────
 SL_MULT = 1.0                          # Stop Loss  = SL_MULT  x ATR from fill price
 TP_MULT = 2.0                          # Take Profit = TP_MULT x ATR from fill price
 # TP/SL ratio integrity check: TP_MULT / SL_MULT must equal 2.0 always
+SHORT_COOLDOWN_BARS = 15    # bars to block new SHORT after a SHORT SL hit
+
 
 # ── Risk & Position Sizing ────────────────────────────────────────────────────
-STARTING_CAPITAL = 10_000.0            # USD
+STARTING_CAPITAL = 10000.0            # USD
 RISK_PCT         = 0.015               # 1.5% of capital risked per trade
 MIN_LOT          = 0.01                # minimum micro lot
 LOT_STEP         = 0.01                # lot size rounding step

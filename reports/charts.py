@@ -1,16 +1,3 @@
-# =============================================================================
-# reports/charts.py — FX Convergence System
-#
-# What this file does (plain English):
-#   Generates all charts and saves them to reports/output/.
-#   Three charts:
-#     1. Equity Curve  — how account balance grew (or fell) over time
-#     2. Trade P&L Distribution — histogram showing spread of wins vs losses
-#     3. WFO Fold Summary — bar chart of Profit Factor across all 6 OOS folds
-#
-#   These charts go into the GitHub README as proof of results.
-# =============================================================================
-
 import logging
 from pathlib import Path
 
